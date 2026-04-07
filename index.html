@@ -2,133 +2,37 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bashame's ROP Tools</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: #0a0d12;
-            font-family: 'Segoe UI', 'Fira Code', monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            text-align: center;
-            max-width: 1000px;
-            width: 100%;
-        }
-
-        h1 {
-            font-size: 2.8rem;
-            font-weight: 500;
-            background: linear-gradient(135deg, #fff, #8bcb8b);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-            margin-bottom: 56px;
-            letter-spacing: -0.5px;
-        }
-
-        .tools {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 40px;
-        }
-
-        .tool-card {
-            background: #11161f;
-            border: 1px solid #2a3440;
-            border-radius: 32px;
-            padding: 28px 24px;
-            width: 360px;
-            transition: all 0.25s ease;
-            text-decoration: none;
-            display: block;
-        }
-
-        .tool-card:hover {
-            transform: translateY(-6px);
-            border-color: #5a7aaa;
-            background: #161e2a;
-            box-shadow: 0 15px 25px -10px rgba(0,0,0,0.5);
-        }
-
-        .tool-icon {
-            font-size: 2.8rem;
-            margin-bottom: 16px;
-        }
-
-        .tool-title {
-            font-size: 1.4rem;
-            font-weight: 500;
-            color: #ffffff;
-            margin-bottom: 12px;
-            white-space: nowrap;
-        }
-
-        .tool-desc {
-            font-size: 0.85rem;
-            color: #9ab0cc;
-            line-height: 1.5;
-        }
-
-        footer {
-            margin-top: 64px;
-            font-size: 0.75rem;
-            color: #4a6080;
-        }
-
-        footer a {
-            color: #7a9cc0;
-            text-decoration: none;
-        }
-
-        @media (max-width: 850px) {
-            .tool-card {
-                width: 320px;
-            }
-            .tool-title {
-                font-size: 1.3rem;
-            }
-        }
-
-        @media (max-width: 750px) {
-            .tool-card {
-                width: 280px;
-            }
-            .tool-title {
-                font-size: 1.2rem;
-                white-space: normal;
-            }
-        }
-
-        @media (max-width: 650px) {
-            h1 { font-size: 2rem; }
-            .tool-card { width: 260px; padding: 20px 20px; }
-            .tool-title { font-size: 1.1rem; }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0d12; font-family: 'Segoe UI', 'Fira Code', monospace; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .container { text-align: center; max-width: 1000px; width: 100%; }
+        h1 { font-size: 2.8rem; font-weight: 500; background: linear-gradient(135deg, #fff, #8bcb8b); background-clip: text; -webkit-background-clip: text; color: transparent; margin-bottom: 56px; }
+        .tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 40px; }
+        .tool-card { background: #11161f; border: 1px solid #2a3440; border-radius: 32px; padding: 28px 24px; width: 360px; transition: all 0.25s ease; text-decoration: none; display: block; }
+        .tool-card:hover { transform: translateY(-6px); border-color: #5a7aaa; background: #161e2a; }
+        .tool-icon { font-size: 2.8rem; margin-bottom: 16px; }
+        .tool-title { font-size: 1.4rem; font-weight: 500; color: #ffffff; margin-bottom: 12px; white-space: nowrap; }
+        .tool-desc { font-size: 0.85rem; color: #9ab0cc; line-height: 1.5; }
+        footer { margin-top: 64px; font-size: 0.75rem; color: #4a6080; }
+        footer a { color: #7a9cc0; text-decoration: none; }
+        @media (max-width: 850px) { .tool-card { width: 320px; } .tool-title { font-size: 1.3rem; } }
+        @media (max-width: 750px) { .tool-card { width: 280px; } .tool-title { white-space: normal; } }
+        @media (max-width: 650px) { h1 { font-size: 2rem; } .tool-card { width: 260px; } }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>⚡ Bashame's ROP Tools</h1>
     <div class="tools">
-        <a href="/decompilerfx580vnx/" class="tool-card">
+        <!-- ĐƯỜNG DẪN NÀY PHẢI TRÙNG VỚI TÊN THƯ MỤC THỰC TẾ -->
+        <a href="decompiler580vnx/" class="tool-card">
             <div class="tool-icon">📟</div>
             <div class="tool-title">Decompiler fx-580VN X</div>
             <div class="tool-desc">hex → assembly converter, tailored for 580vnx, intelligent & handy</div>
         </a>
-        <a href="/findgadget/" class="tool-card">
+        <a href="findgadget/" class="tool-card">
             <div class="tool-icon">🔍</div>
             <div class="tool-title">Find Gadget</div>
             <div class="tool-desc">find ROP gadgets via prefix matching, upload a disassembly file</div>
@@ -136,7 +40,7 @@
     </div>
     <footer>
         <span>by @Bashamee · </span>
-        <a href="https://github.com/bashamee/rop-tools" target="_blank">GitHub</a>
+        <a href="https://github.com/bashamee/roptools" target="_blank">GitHub</a>
     </footer>
 </div>
 </body>
