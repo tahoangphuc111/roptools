@@ -26,7 +26,7 @@
         .copy-all-btn { background: #1a2a2c; color: #7dcfcf; }
         .search-btn { background: #1e3040; color: #7ab4d4; padding: 8px 18px; }
         .help-btn { background: #232e3c; color: #8ab4d4; }
-        /* Disas status bar */
+        .home-btn { background: #2a3a4a; color: #c0e0ff; }
         .disas-bar { display: flex; align-items: center; gap: 10px; padding: 7px 20px; background: #0c1017; border-bottom: 1px solid #1e2530; flex-wrap: wrap; }
         .disas-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.75rem; padding: 3px 12px; border-radius: 30px; font-weight: 500; }
         .disas-badge.no-file { background: #1e1a2a; color: #8870b8; border: 1px solid #3a2e5a; }
@@ -37,18 +37,15 @@
         .disas-badge.no-file .dot { background: #8870b8; }
         .spinner { width: 11px; height: 11px; border: 2px solid #2e5a3a; border-top-color: #8bcb8b; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
         .stat-chip { font-size: 0.7rem; color: #7a93b0; background: #161d28; padding: 2px 8px; border-radius: 16px; }
-        /* Help panel */
         .help-panel { background: #0d1219; margin: 0 20px 10px; padding: 10px 14px; border-radius: 14px; border-left: 3px solid #4a72c7; font-size: 0.8rem; color: #9ab0c8; display: none; line-height: 1.6; }
         .help-panel.show { display: block; }
         .help-panel code { color: #8bcb8b; background: #161d28; padding: 1px 5px; border-radius: 8px; }
-        /* Results */
         .results-container { background: #07090e; border: 1px solid #1e2530; border-radius: 14px; margin: 8px 20px 14px; padding: 10px 14px; overflow-y: auto; height: 52vh; font-family: monospace; font-size: 12.5px; line-height: 1.4; color: #dde8ff; }
         .gadget-block { border-left: 2px solid #4a72c7; margin-bottom: 14px; padding: 6px 10px; background: #0c1018; border-radius: 10px; }
         .gadget-header { color: #e8c86a; font-size: 0.78rem; display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
         .copy-gadget-btn { background: #162028; border: none; border-radius: 20px; padding: 2px 10px; font-size: 0.68rem; cursor: pointer; color: #7dcfcf; font-family: monospace; }
         .copy-gadget-btn:hover { background: #243040; }
         .gadget-line { white-space: pre-wrap; color: #b8cce8; }
-        /* Status bar */
         .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 6px 20px 12px; flex-wrap: wrap; gap: 8px; }
         .status-msg { font-size: 0.75rem; color: #8aa0b8; background: #141b24; padding: 4px 10px; border-radius: 30px; }
         .status-count { font-size: 0.75rem; color: #7bcf9a; background: #0e1e14; padding: 4px 10px; border-radius: 30px; }
@@ -71,7 +68,8 @@
         <button id="sortAddrBtn" class="sort-btn">📊 Sort by address</button>
         <button id="sortLenBtn" class="sort-btn">📏 Sort by length</button>
         <button id="copyAllBtn" class="copy-all-btn">📋 Copy all</button>
-        <button id="clearBtn" class="clear-btn toolbar-right">🗑 Clear</button>
+        <button id="clearBtn" class="clear-btn">🗑 Clear</button>
+        <a href="../" style="text-decoration:none;"><button class="home-btn">🏠 Home</button></a>
     </div>
     <div class="disas-bar">
         <div class="disas-badge no-file" id="disasBadge"><span class="dot"></span><span id="disasBadgeText">No disassembly loaded</span></div>
