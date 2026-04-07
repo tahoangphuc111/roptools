@@ -77,17 +77,20 @@
     </div>
     <div class="search-section">
         <div class="search-group">
-            <label>INSTRUCTIONS — one per line, prefix match (e.g. <code style="color:#8bcb8b;background:#161d28;padding:1px 5px;border-radius:6px;">mov r</code> matches <code style="color:#8bcb8b;background:#161d28;padding:1px 5px;border-radius:6px;">mov r0</code>, <code style="color:#8bcb8b;background:#161d28;padding:1px 5px;border-radius:6px;">mov r12, r1</code> …)</label>
-            <textarea id="instructionsInput" rows="2" placeholder="pop er&#10;pop pc"></textarea>
+            <label>INSTRUCTIONS — one per line. Use <code style="color:#8bcb8b;">$</code> as wildcard for register number (e.g. <code>l er$, [er$]</code> matches <code>l er10, [er8]</code>). Without <code>$</code>, it's prefix match.</label>
+            <textarea id="instructionsInput" rows="2" placeholder="pop er$&#10"></textarea>
         </div>
         <button id="searchBtn" class="search-btn">🔎 Find</button>
     </div>
     <div id="helpPanel" class="help-panel">
         <strong>How to use:</strong><br>
         1. Click <strong>Upload disassembly</strong> to load a .txt / .asm / .dis file.<br>
-        2. Enter instructions to search (one per line). Matching is <em>prefix-based</em> — no wildcards needed: <code>pop er</code> matches <code>pop er0</code>, <code>pop er2</code>, <code>pop er12</code>, etc.<br>
-        3. Click <strong>Find</strong>. Each result ends at <code>pop pc</code>, <code>rt</code>, or <code>rti</code>.<br>
-        4. Use <strong>Sort by address / length</strong> to reorder. <strong>Copy all</strong> copies every found gadget.
+        2. Enter instructions to search (one per line).<br>
+        3. <strong>Wildcard <code>$</code></strong> matches any decimal number (0-99) in register names.<br>
+           Example: <code>l er$, [er$]</code> finds <code>l er0, [er2]</code>, <code>l er12, [er8]</code>, etc.<br>
+        4. Without <code>$</code>, matching is <em>prefix-based</em>: <code>pop er</code> matches <code>pop er0</code>, <code>pop er2</code>, <code>pop er12</code>...<br>
+        5. Click <strong>Find</strong>. Each result ends at <code>pop pc</code>, <code>rt</code>, or <code>rti</code>.<br>
+        6. Use <strong>Sort by address / length</strong> to reorder. <strong>Copy all</strong> copies every found gadget.
     </div>
     <div id="resultsContainer" class="results-container">
         <pre style="margin:0;color:#4a6080;">// Upload a disassembly file and enter instructions to search.</pre>
@@ -151,11 +154,23 @@
         return instr.replace(/\s+/g, '').toLowerCase();
     }
 
-    // Prefix match — pattern must match the START of the instruction.
-    // No wildcard needed: "mopr" matches "mopr0", "mopr12,r1" etc.
+    // Convert a pattern containing $ into a regular expression.
+    // $ matches any decimal number (1-2 digits) in register names.
+    function patternToRegex(pattern) {
+        let escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        let regexStr = escaped.replace(/\\\$/g, '(\\d{1,2})');
+        return new RegExp('^' + regexStr + '$');
+    }
+
+    // Check if instruction matches pattern (supports $ wildcard)
     function matchesPattern(normInstr, pattern) {
         if (pattern.length === 0) return true;
-        return normInstr.startsWith(pattern);
+        if (pattern.includes('$')) {
+            const regex = patternToRegex(pattern);
+            return regex.test(normInstr);
+        } else {
+            return normInstr.startsWith(pattern);
+        }
     }
 
     function isLabelLine(line) {
@@ -219,7 +234,7 @@
         return gadgets;
     }
 
-    // ── Render — render ALL at once using chunked HTML build ────────
+    // ── Render ──────────────────────────────────────────────────────
     function sortGadgets(gadgets, by) {
         if (by === 'addr') return [...gadgets].sort((a,b) => (parseInt(a.address,16)||0)-(parseInt(b.address,16)||0));
         if (by === 'len')  return [...gadgets].sort((a,b) => a.length - b.length);
@@ -236,7 +251,6 @@
             resultsDiv.innerHTML = `<pre style="margin:0;color:#4a6080;">// No gadgets found.</pre>`;
             return;
         }
-        // Build all HTML in one string — fast even for thousands of gadgets
         let parts = [];
         for (let g of sorted) {
             let text = escapeHtml(g.lines.join('\n'));
