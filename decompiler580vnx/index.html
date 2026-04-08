@@ -69,7 +69,7 @@
             color: white;
             font-family: monospace;
             font-size: 0.9rem;
-            width: 110px;
+            width: 100px;
             text-align: center;
         }
         button {
@@ -105,6 +105,8 @@
         .copy-btn { background: #1e2a2c; color: #8dd0cf; }
         .paste-btn { background: #232a30; }
         .home-btn { background: #2a3a4a; color: #c0e0ff; }
+        .toggle-labels-btn { background: #2a4a3a; color: #8bcb8b; }
+        .show-keys-btn { background: #2a4a3a; color: #8bcb8b; margin-left: 8px; }
         textarea {
             width: 100%;
             background: #070a0f;
@@ -170,6 +172,7 @@
         .gadget-name { color: #8bcb8b; font-weight: 500; font-size: 12px; }
         .gadget-name-unknown { color: #f28b82; font-size: 12px; }
         .data-name { color: #7aa2f7; font-weight: 500; font-size: 12px; }
+        .label-name { color: #e8c86a; font-weight: 500; font-size: 12px; }
         .location {
             margin-left: auto;
             color: #6c86a3;
@@ -179,17 +182,6 @@
             padding: 2px 8px;
             border-radius: 20px;
         }
-        .toggle-call-btn {
-            background: #2a3a4a;
-            border: none;
-            border-radius: 30px;
-            padding: 2px 8px;
-            font-size: 10px;
-            cursor: pointer;
-            color: #b0d0ff;
-            font-family: monospace;
-        }
-        .toggle-call-btn:hover { background: #3a4a5a; }
         .status-bar {
             display: flex;
             justify-content: space-between;
@@ -230,11 +222,14 @@
         <button id="pasteBtn" class="paste-btn">📋 PASTE</button>
         <button id="copyBtn" class="copy-btn">📄 COPY OUTPUT</button>
         <button id="clearBtn" class="clear-btn">🗑 CLEAR</button>
-        <input type="text" id="startAddrInput" class="addr-input" value="d730" placeholder="start addr">
+        <input type="text" id="startAddrInput" class="addr-input" value="d730" placeholder="dest addr">
+        <input type="text" id="backupAddrInput" class="addr-input" value="e9e0" placeholder="src addr">
         <div class="mode-switch">
             <button id="modeDetailBtn" class="mode-btn active">🎨 Detailed</button>
             <button id="modeSimpleBtn" class="mode-btn">📄 Simple</button>
         </div>
+        <button id="toggleLabelsBtn" class="toggle-labels-btn">🏷️ Toggle Labels</button>
+        <button id="showKeysBtn" class="show-keys-btn">🔑 Show Keys</button>
         <a href="../" style="text-decoration:none;"><button class="home-btn">🏠 Home</button></a>
     </div>
     <div class="input-container">
@@ -274,7 +269,7 @@
             .trim();
     }
 
-    // ========== GADGET LIST ==========
+    // ========== GADGET LIST (gốc) ==========
     const gadgetList = [
         ["09fa8","setlr"],["308d0","setlr_pc"],["0a05c","DI,RT"],
         ["23f9e","calc_checksum_set_f004"],["23fa6","calc_checksum_no_set_f004"],
@@ -386,6 +381,12 @@
         ["2045c","pop xr4,pop xr12"]
     ];
 
+    // Bổ sung các gadget mới
+    gadgetList.push(["13622","pop qr8"]);
+    gadgetList.push(["1fcf4","pop er4"]);
+    gadgetList.push(["09d3e","pop er2"]);
+    gadgetList.push(["10e80","pop ea, r6-=1_ne,call 10e6e|pop xr4"]);
+    gadgetList.push(["1216a","pop er0"]);
     gadgetList.push(["17b34","pop xr0"]);
     gadgetList.push(["1622e","pop xr0"]);
 
@@ -401,10 +402,30 @@
         "sp=er14,pop er14",
         "sp=er6,pop er8",
         "sp=er14,pop xr12",
-        "sp=er14,pop qr8,pop er6"
+        "sp=er14,pop qr8,pop er6",
+        "sp+=6,pop qr8",
+        "sp+=50,pop qr8",
+        "sp+=20,pop qr8",
+        "sp+=30,pop qr8",
+        "sp+=30,pop er14",
+        "sp+=2,r0=0",
+        "sp+=20,pop xr12",
+        "sp+=10,pop er12",
+        "sp+=60,pop xr8",
+        "sp+=4,pop xr8",
+        "sp+=64,pop er6,pop qr8",
+        "sp+=4,pop qr8,pop xr4",
+        "sp+=40,pop qr8,pop xr4",
+        "sp+=60,pop qr8,pop xr4",
+        "sp+=50,pop qr8,pop xr4",
+        "sp+=50,pop xr4,pop qr8",
+        "sp+=120,pop qr8,pop xr4",
+        "sp+=2,pop xr4,pop qr8",
+        "sp+=120,pop xr8",
+        "sp+=2,r0=1,pop er8",
+        "sp+=32,r2=r0,pop xr8"
     ]);
 
-    // ========== POP SIZE PARSER ==========
     function getPopSizes(gadgetName) {
         if (!gadgetName) return null;
         let pops = [];
@@ -432,7 +453,6 @@
         return pops.length ? pops : null;
     }
 
-    // ========== DECOMPILE FUNCTIONS ==========
     const MIN_VALID_CALL_ADDR = 0x8000;
 
     function normalizeAddress(addr) {
@@ -452,12 +472,35 @@
         return bytes;
     }
 
-    function parseToItems(bytes, startAddr) {
+    // ========== KEY MAPPING (little-endian values) ==========
+    const keyMap = new Map();
+    const keyTable = [
+        [0x0180, "SHIFT"], [0x0280, "ALPHA"], [0x0440, "←"], [0x0880, "→"],
+        [0x0480, "↑"], [0x0840, "↓"], [0x1080, "MENU"], [0x0140, "OTPN"],
+        [0x0240, "CALC"], [0x1040, "∫"], [0x0240, "X"], [0x0120, "⁄"],
+        [0x0220, "√"], [0x0420, "x²"], [0x0820, "xˆ"], [0x1020, "log"],
+        [0x2020, "IN"], [0x0110, "(-)"], [0x0210, "ĐỘ"], [0x0410, "x^-1"],
+        [0x0810, "SIN"], [0x1010, "COS"], [0x2010, "TAN"], [0x0108, "STO"],
+        [0x0208, "ENG"], [0x0408, "("], [0x0808, ")"], [0x1008, "S<=>D"],
+        [0x2008, "M+"], [0x1004, "AC"], [0x1002, "÷"], [0x1001, "-"],
+        [0x4004, "x10"], [0x4001, "="], [0x4010, "0"], [0x0101, "1"],
+        [0x0201, "2"], [0x0401, "3"], [0x0102, "4"], [0x0202, "5"],
+        [0x0402, "6"], [0x0104, "7"], [0x0204, "8"], [0x0404, "9"],
+        [0x0804, "DEL"], [0x0802, "×"], [0x0801, "+"], [0x4008, "."],
+        [0x4002, "ANS"]
+    ];
+    for (let [val, name] of keyTable) {
+        keyMap.set(val, name);
+    }
+
+    // Parse items from bytes, with dest and src addresses
+    function parseToItems(bytes, startAddrDest, startAddrSrc) {
         let items = [];
         let offset = 0;
         let i = 0;
         while (i < bytes.length) {
-            let ramAddr = startAddr + offset;
+            let ramAddrDest = startAddrDest + offset;
+            let ramAddrSrc = startAddrSrc + offset;
             if (i + 3 < bytes.length) {
                 let zz = bytes[i], yy = bytes[i+1], third = bytes[i+2], fourth = bytes[i+3];
                 if (third >= 0x30 && third <= 0x39 && fourth === 0x30) {
@@ -465,16 +508,16 @@
                     let rawAddr = (X << 16) | (yy << 8) | zz;
                     if (rawAddr === 0x03030) {
                         let val = (bytes[i+1] << 8) | bytes[i];
-                        items.push({ type: 'data', hexBytes: [zz, yy], value: val, ramAddr: ramAddr, rawMode: false });
+                        items.push({ type: 'data', hexBytes: [zz, yy], value: val, ramAddrDest, ramAddrSrc });
                         i += 2; offset += 2;
                         continue;
                     }
                     if (rawAddr < MIN_VALID_CALL_ADDR) {
                         let val1 = (yy << 8) | zz;
                         let val2 = (fourth << 8) | third;
-                        items.push({ type: 'data', hexBytes: [zz, yy], value: val1, ramAddr: ramAddr, rawMode: false });
+                        items.push({ type: 'data', hexBytes: [zz, yy], value: val1, ramAddrDest, ramAddrSrc });
                         offset += 2;
-                        items.push({ type: 'data', hexBytes: [third, fourth], value: val2, ramAddr: startAddr + offset, rawMode: false });
+                        items.push({ type: 'data', hexBytes: [third, fourth], value: val2, ramAddrDest: startAddrDest + offset, ramAddrSrc: startAddrSrc + offset });
                         i += 4; offset += 2;
                         continue;
                     }
@@ -485,8 +528,8 @@
                         hexBytes: [zz, yy, third, fourth],
                         addr: fixedAddr,
                         name: name || null,
-                        ramAddr: ramAddr,
-                        rawMode: false
+                        ramAddrDest,
+                        ramAddrSrc
                     });
                     i += 4;
                     offset += 4;
@@ -508,8 +551,8 @@
                                         type: 'data',
                                         hexBytes: dataBytes,
                                         value: value,
-                                        ramAddr: startAddr + offset,
-                                        rawMode: false
+                                        ramAddrDest: startAddrDest + offset,
+                                        ramAddrSrc: startAddrSrc + offset
                                     });
                                     i += sz;
                                     offset += sz;
@@ -523,21 +566,138 @@
             }
             if (i+1 < bytes.length) {
                 let val = (bytes[i+1] << 8) | bytes[i];
-                items.push({ type: 'data', hexBytes: [bytes[i], bytes[i+1]], value: val, ramAddr: ramAddr, rawMode: false });
+                items.push({ type: 'data', hexBytes: [bytes[i], bytes[i+1]], value: val, ramAddrDest, ramAddrSrc });
                 i += 2; offset += 2;
             } else {
-                items.push({ type: 'data', hexBytes: [bytes[i]], value: bytes[i], ramAddr: ramAddr, rawMode: false });
+                items.push({ type: 'data', hexBytes: [bytes[i]], value: bytes[i], ramAddrDest, ramAddrSrc });
                 i++; offset++;
             }
         }
         return items;
     }
 
-    // ========== RENDERING ==========
-    function renderDetailedHtml(items, onToggle) {
-        const container = document.createElement('div');
+    // Function to add label references to items
+    function addLabelReferences(items, startAddrDest, startAddrSrc) {
+        let addrToItemIdx = new Map();
         for (let idx = 0; idx < items.length; idx++) {
             const it = items[idx];
+            addrToItemIdx.set(it.ramAddrDest, idx);
+            addrToItemIdx.set(it.ramAddrSrc, idx);
+        }
+
+        let labelCounter = 1;
+        let labelMap = new Map();
+
+        for (let idx = 0; idx < items.length; idx++) {
+            const it = items[idx];
+            if (it.type === 'data' && it.hexBytes.length === 2) {
+                const val = it.value;
+                if (addrToItemIdx.has(val)) {
+                    const targetIdx = addrToItemIdx.get(val);
+                    const targetItem = items[targetIdx];
+                    let isSrc = false;
+                    if (targetItem.ramAddrSrc === val) isSrc = true;
+                    else if (targetItem.ramAddrDest === val) isSrc = false;
+                    else continue;
+                    if (!labelMap.has(val)) {
+                        labelMap.set(val, `label${labelCounter++}`);
+                    }
+                    const labelName = labelMap.get(val);
+                    it.labelRef = { label: labelName, isSrc, originalValue: val };
+                }
+            }
+        }
+
+        let labelItems = [];
+        for (let [addr, labelName] of labelMap.entries()) {
+            const targetIdx = addrToItemIdx.get(addr);
+            if (targetIdx !== undefined) {
+                labelItems.push({ type: 'label', label: labelName, insertBefore: targetIdx, addr });
+            }
+        }
+        labelItems.sort((a,b) => b.insertBefore - a.insertBefore);
+        for (let li of labelItems) {
+            items.splice(li.insertBefore, 0, { type: 'label', label: li.label, addr: li.addr });
+        }
+
+        // Merge consecutive labels
+        let merged = false;
+        do {
+            merged = false;
+            for (let i = 0; i < items.length - 1; i++) {
+                if (items[i].type === 'label' && items[i+1].type === 'label') {
+                    let keepLabel = items[i].label;
+                    let removeLabel = items[i+1].label;
+                    items.splice(i+1, 1);
+                    for (let it of items) {
+                        if (it.type === 'data' && it.labelRef && it.labelRef.label === removeLabel) {
+                            it.labelRef.label = keepLabel;
+                        }
+                    }
+                    merged = true;
+                    break;
+                }
+            }
+        } while (merged);
+
+        return items;
+    }
+
+    // UI state
+    let currentMode = "detail";
+    let currentItems = [];
+    let currentByteCount = 0;
+    let currentStartAddrDest = 0xd730;
+    let currentStartAddrSrc = 0xe9e0;
+    let labelMode = true;   // toggle labels
+    let showKeys = false;   // toggle key display
+
+    const hexInput = document.getElementById('hexInput');
+    const outputDiv = document.getElementById('outputList');
+    const statusSpan = document.getElementById('statusMsg');
+    const statsSpan = document.getElementById('statsMsg');
+    const decompileBtn = document.getElementById('decompileBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const pasteBtn = document.getElementById('pasteBtn');
+    const startAddrInput = document.getElementById('startAddrInput');
+    const backupAddrInput = document.getElementById('backupAddrInput');
+    const modeDetail = document.getElementById('modeDetailBtn');
+    const modeSimple = document.getElementById('modeSimpleBtn');
+    const toggleLabelsBtn = document.getElementById('toggleLabelsBtn');
+    const showKeysBtn = document.getElementById('showKeysBtn');
+
+    function updateStats(bytes, items) {
+        statsSpan.textContent = `byte: ${bytes} | items: ${items.length}`;
+    }
+
+    function setStatus(text, isError = false) {
+        statusSpan.textContent = text;
+        statusSpan.style.color = isError ? '#f28b82' : '#a0b8d0';
+        setTimeout(() => {
+            if (statusSpan.textContent === text && !isError) statusSpan.style.color = '#a0b8d0';
+        }, 2000);
+    }
+
+    function renderDetailedHtml() {
+        const container = document.createElement('div');
+        for (let idx = 0; idx < currentItems.length; idx++) {
+            const it = currentItems[idx];
+            if (it.type === 'label') {
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'gadget-line';
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'label-name';
+                labelSpan.textContent = `${it.label}:`;
+                lineDiv.appendChild(labelSpan);
+                const locSpan = document.createElement('span');
+                locSpan.className = 'location';
+                locSpan.textContent = `${it.addr.toString(16).toLowerCase().padStart(5, '0')}`;
+                lineDiv.appendChild(locSpan);
+                container.appendChild(lineDiv);
+                continue;
+            }
+
             const lineDiv = document.createElement('div');
             lineDiv.className = 'gadget-line';
             let hexText = it.hexBytes.map(b => b.toString(16).padStart(2,'0')).join(' ');
@@ -549,120 +709,87 @@
             arrowSpan.className = 'arrow';
             arrowSpan.textContent = '➜';
             lineDiv.appendChild(arrowSpan);
+
             if (it.type === 'call') {
                 const addrStr = it.addr.toString(16).toUpperCase().padStart(5, '0');
-                if (it.rawMode) {
-                    const rawHexValue = (it.hexBytes[3] << 24) | (it.hexBytes[2] << 16) | (it.hexBytes[1] << 8) | it.hexBytes[0];
-                    const dataSpan = document.createElement('span');
-                    dataSpan.className = 'data-name';
-                    dataSpan.textContent = `→ 0x${rawHexValue.toString(16).toUpperCase().padStart(8, '0')}`;
-                    lineDiv.appendChild(dataSpan);
+                const addrSpan = document.createElement('span');
+                addrSpan.className = 'addr';
+                addrSpan.textContent = addrStr;
+                lineDiv.appendChild(addrSpan);
+                const nameSpan = document.createElement('span');
+                if (it.name) {
+                    nameSpan.className = 'gadget-name';
+                    nameSpan.textContent = `→ ${it.name}`;
                 } else {
-                    const addrSpan = document.createElement('span');
-                    addrSpan.className = 'addr';
-                    addrSpan.textContent = addrStr;
-                    lineDiv.appendChild(addrSpan);
-                    const nameSpan = document.createElement('span');
-                    if (it.name) {
-                        nameSpan.className = 'gadget-name';
-                        nameSpan.textContent = `→ ${it.name}`;
-                    } else {
-                        nameSpan.className = 'gadget-name-unknown';
-                        nameSpan.textContent = `→ call ${addrStr}`;
-                    }
-                    lineDiv.appendChild(nameSpan);
+                    nameSpan.className = 'gadget-name-unknown';
+                    nameSpan.textContent = `→ call ${addrStr}`;
                 }
-                const toggleBtn = document.createElement('button');
-                toggleBtn.textContent = '🔄';
-                toggleBtn.className = 'toggle-call-btn';
-                toggleBtn.title = 'Toggle raw hex';
-                toggleBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    onToggle(idx);
-                };
-                lineDiv.appendChild(toggleBtn);
-            } else {
-                let displayValue = (it.hexBytes.length === 2) ? `0x${it.value.toString(16).toUpperCase().padStart(4,'0')}` : `0x${it.value.toString(16).toUpperCase().padStart(2,'0')}`;
+                lineDiv.appendChild(nameSpan);
+            } else if (it.type === 'data') {
+                let display;
+                if (labelMode && it.labelRef) {
+                    const ref = it.labelRef;
+                    display = ref.isSrc ? `adr_of [+4784] ${ref.label}` : `adr_of ${ref.label}`;
+                } else {
+                    let valHex = (it.hexBytes.length === 2) ? `0x${it.value.toString(16).toUpperCase().padStart(4,'0')}` : `0x${it.value.toString(16).toUpperCase().padStart(2,'0')}`;
+                    display = valHex;
+                    if (showKeys && it.hexBytes.length === 2 && keyMap.has(it.value)) {
+                        display += ` # [${keyMap.get(it.value)}]`;
+                    }
+                }
                 const dataSpan = document.createElement('span');
                 dataSpan.className = 'data-name';
-                dataSpan.textContent = `→ ${displayValue}`;
+                dataSpan.textContent = `→ ${display}`;
                 lineDiv.appendChild(dataSpan);
             }
+
             const locSpan = document.createElement('span');
             locSpan.className = 'location';
-            locSpan.textContent = it.ramAddr.toString(16).toLowerCase().padStart(5, '0');
+            locSpan.textContent = `${it.ramAddrDest.toString(16).toLowerCase().padStart(5, '0')} ${it.ramAddrSrc.toString(16).toLowerCase().padStart(5, '0')}`;
             lineDiv.appendChild(locSpan);
             container.appendChild(lineDiv);
         }
-        return container;
+        outputDiv.innerHTML = '';
+        outputDiv.appendChild(container);
     }
 
-    function formatSimple(items) {
+    function formatSimple() {
         let lines = [];
-        for (let it of items) {
+        for (let it of currentItems) {
+            if (it.type === 'label') {
+                lines.push(`${it.label}:`);
+                continue;
+            }
             if (it.type === 'call') {
-                if (it.rawMode) {
-                    const rawHexValue = (it.hexBytes[3] << 24) | (it.hexBytes[2] << 16) | (it.hexBytes[1] << 8) | it.hexBytes[0];
-                    lines.push(`0x${rawHexValue.toString(16).toUpperCase().padStart(8, '0')}`);
+                lines.push(it.name || `call ${it.addr.toString(16).toUpperCase().padStart(5,'0')}`);
+            } else if (it.type === 'data') {
+                if (labelMode && it.labelRef) {
+                    const ref = it.labelRef;
+                    lines.push(ref.isSrc ? `adr_of [+4784] ${ref.label}` : `adr_of ${ref.label}`);
                 } else {
-                    lines.push(it.name || `call ${it.addr.toString(16).toUpperCase().padStart(5,'0')}`);
+                    let val = (it.hexBytes.length === 2) ? `0x${it.value.toString(16).toUpperCase().padStart(4,'0')}` : `0x${it.value.toString(16).toUpperCase().padStart(2,'0')}`;
+                    if (showKeys && it.hexBytes.length === 2 && keyMap.has(it.value)) {
+                        val += ` # [${keyMap.get(it.value)}]`;
+                    }
+                    lines.push(val);
                 }
-            } else {
-                let val = (it.hexBytes.length === 2) ? `0x${it.value.toString(16).toUpperCase().padStart(4,'0')}` : `0x${it.value.toString(16).toUpperCase().padStart(2,'0')}`;
-                lines.push(val);
             }
         }
         return lines.join('\n');
     }
 
-    // UI state
-    let currentMode = "detail";
-    let currentItems = [];
-    let currentByteCount = 0;
-
-    const hexInput = document.getElementById('hexInput');
-    const outputDiv = document.getElementById('outputList');
-    const statusSpan = document.getElementById('statusMsg');
-    const statsSpan = document.getElementById('statsMsg');
-    const decompileBtn = document.getElementById('decompileBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const copyBtn = document.getElementById('copyBtn');
-    const pasteBtn = document.getElementById('pasteBtn');
-    const startAddrInput = document.getElementById('startAddrInput');
-    const modeDetail = document.getElementById('modeDetailBtn');
-    const modeSimple = document.getElementById('modeSimpleBtn');
-
-    function updateStats(bytes, items) {
-        statsSpan.textContent = `byte: ${bytes} | items: ${items}`;
-    }
-
-    function setStatus(text, isError = false) {
-        statusSpan.textContent = text;
-        statusSpan.style.color = isError ? '#f28b82' : '#a0b8d0';
-        setTimeout(() => {
-            if (statusSpan.textContent === text && !isError) statusSpan.style.color = '#a0b8d0';
-        }, 2000);
-    }
-
     function refreshOutput() {
         if (!currentItems.length) {
             outputDiv.innerHTML = '<div style="color:#b0c0d8; padding:12px;">// No data. Enter hex and press DECOMPILE.</div>';
-            updateStats(0, 0);
+            updateStats(0, []);
             return;
         }
         if (currentMode === "detail") {
-            outputDiv.innerHTML = '';
-            outputDiv.appendChild(renderDetailedHtml(currentItems, (idx) => {
-                if (currentItems[idx] && currentItems[idx].type === 'call') {
-                    currentItems[idx].rawMode = !currentItems[idx].rawMode;
-                    refreshOutput();
-                    setStatus(`Toggled raw hex for call at ${currentItems[idx].addr.toString(16).toUpperCase()}`);
-                }
-            }));
+            renderDetailedHtml();
         } else {
-            outputDiv.innerText = formatSimple(currentItems);
+            outputDiv.innerText = formatSimple();
         }
-        updateStats(currentByteCount, currentItems.length);
+        updateStats(currentByteCount, currentItems);
     }
 
     function decompileAndSet() {
@@ -671,26 +798,32 @@
             currentItems = [];
             currentByteCount = 0;
             outputDiv.innerHTML = '<div style="color:#b0c0d8; padding:12px;">// Please enter hex program</div>';
-            updateStats(0, 0);
+            updateStats(0, []);
             setStatus("⚠️ No hex input", true);
             return;
         }
-        let startAddr = parseInt(startAddrInput.value.trim().toLowerCase(), 16);
-        if (isNaN(startAddr)) startAddr = 0xd730;
+        let startAddrDest = parseInt(startAddrInput.value.trim().toLowerCase(), 16);
+        if (isNaN(startAddrDest)) startAddrDest = 0xd730;
+        let startAddrSrc = parseInt(backupAddrInput.value.trim().toLowerCase(), 16);
+        if (isNaN(startAddrSrc)) startAddrSrc = 0xe9e0;
+        currentStartAddrDest = startAddrDest;
+        currentStartAddrSrc = startAddrSrc;
         setStatus("⏳ Decompiling...");
         setTimeout(() => {
             try {
                 let bytes = hexToBytes(rawHex);
                 if (!bytes.length) throw new Error("Invalid hex bytes");
                 currentByteCount = bytes.length;
-                currentItems = parseToItems(bytes, startAddr);
+                let items = parseToItems(bytes, startAddrDest, startAddrSrc);
+                items = addLabelReferences(items, startAddrDest, startAddrSrc);
+                currentItems = items;
                 refreshOutput();
                 setStatus("✅ Decompiled successfully");
             } catch (e) {
                 currentItems = [];
                 currentByteCount = 0;
                 outputDiv.innerHTML = `<div style="color:#f28b82; padding:12px;">// Error: ${e.message}</div>`;
-                updateStats(0, 0);
+                updateStats(0, []);
                 setStatus("❌ Decompile error", true);
             }
         }, 10);
@@ -702,11 +835,11 @@
         currentItems = [];
         currentByteCount = 0;
         outputDiv.innerHTML = '<div style="color:#b0c0d8; padding:12px;">// Press DECOMPILE</div>';
-        updateStats(0, 0);
+        updateStats(0, []);
         setStatus("🧹 Cleared");
     };
     copyBtn.onclick = () => {
-        let txt = currentMode === "detail" ? formatSimple(currentItems) : outputDiv.innerText;
+        let txt = currentMode === "detail" ? formatSimple() : outputDiv.innerText;
         if (!txt || txt.includes("// Press DECOMPILE") || txt.includes("// No data")) {
             setStatus("⚠️ Nothing to copy", true);
             return;
@@ -736,11 +869,23 @@
     modeDetail.onclick = () => setActiveMode("detail");
     modeSimple.onclick = () => setActiveMode("simple");
 
+    toggleLabelsBtn.onclick = () => {
+        labelMode = !labelMode;
+        refreshOutput();
+        setStatus(labelMode ? "🏷️ Labels ON" : "🔢 Raw values ON");
+    };
+
+    showKeysBtn.onclick = () => {
+        showKeys = !showKeys;
+        refreshOutput();
+        setStatus(showKeys ? "🔑 Key display ON" : "🔑 Key display OFF");
+    };
+
     hexInput.value = "";
     currentItems = [];
     currentByteCount = 0;
     outputDiv.innerHTML = '<div style="color:#b0c0d8; padding:12px;">// Press DECOMPILE</div>';
-    updateStats(0, 0);
+    updateStats(0, []);
     setStatus("✅ Ready");
 </script>
 </body>
