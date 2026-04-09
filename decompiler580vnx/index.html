@@ -106,7 +106,43 @@
         .paste-btn { background: #232a30; }
         .home-btn { background: #2a3a4a; color: #c0e0ff; }
         .toggle-labels-btn { background: #2a4a3a; color: #8bcb8b; }
-        .show-keys-btn { background: #2a4a3a; color: #8bcb8b; margin-left: 8px; }
+        .show-keys-btn { background: #2a4a3a; color: #8bcb8b; }
+        /* Settings menu */
+        .settings-btn { background: #2a3040; color: #c0d0ff; position: relative; }
+        .settings-dropdown {
+            display: none; position: absolute; top: calc(100% + 6px); right: 0;
+            background: #141c28; border: 1px solid #2e3a4e; border-radius: 16px;
+            padding: 10px 0; min-width: 220px; z-index: 999;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .settings-dropdown.show { display: block; }
+        .settings-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 7px 16px; font-size: 0.8rem; color: #b0c0d8; cursor: pointer;
+            gap: 12px; white-space: nowrap;
+        }
+        .settings-item:hover { background: #1e2a3a; }
+        .settings-item .toggle-pill {
+            width: 34px; height: 18px; border-radius: 9px; background: #3e5080;
+            position: relative; transition: 0.2s; flex-shrink: 0;
+        }
+        .settings-item .toggle-pill.on { background: #4a8a5a; }
+        .settings-item .toggle-pill::after {
+            content: ''; position: absolute; width: 14px; height: 14px;
+            border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: 0.2s;
+        }
+        .settings-item .toggle-pill.on::after { left: 18px; }
+        .settings-divider { height: 1px; background: #2a3a4a; margin: 6px 0; }
+        .settings-addr-row {
+            display: flex; align-items: center; gap: 6px; padding: 5px 16px; font-size: 0.8rem; color: #b0c0d8;
+        }
+        .settings-addr-row input {
+            background: #1a212c; border: 1px solid #3a4a5a; border-radius: 30px;
+            padding: 3px 8px; color: white; font-family: monospace; font-size: 0.8rem;
+            width: 75px; text-align: center;
+        }
+        .settings-label { color: #8da3c0; font-size: 0.75rem; }
+        .addr-tag { font-size: 0.7rem; color: #7090b0; }
         textarea {
             width: 100%;
             background: #070a0f;
@@ -222,14 +258,42 @@
         <button id="pasteBtn" class="paste-btn">📋 PASTE</button>
         <button id="copyBtn" class="copy-btn">📄 COPY OUTPUT</button>
         <button id="clearBtn" class="clear-btn">🗑 CLEAR</button>
-        <input type="text" id="startAddrInput" class="addr-input" value="d730" placeholder="dest addr">
-        <input type="text" id="backupAddrInput" class="addr-input" value="e9e0" placeholder="src addr">
         <div class="mode-switch">
             <button id="modeDetailBtn" class="mode-btn active">🎨 Detailed</button>
             <button id="modeSimpleBtn" class="mode-btn">📄 Simple</button>
         </div>
-        <button id="toggleLabelsBtn" class="toggle-labels-btn">🏷️ Toggle Labels</button>
-        <button id="showKeysBtn" class="show-keys-btn">🔑 Show Keys</button>
+        <div style="position:relative;margin-left:auto;">
+            <button id="settingsBtn" class="settings-btn">⚙️ Settings ▾</button>
+            <div class="settings-dropdown" id="settingsDropdown">
+                <div class="settings-addr-row">
+                    <span class="settings-label">dest</span>
+                    <input type="text" id="startAddrInput" value="d730" placeholder="d730">
+                    <span class="addr-tag">runtime</span>
+                </div>
+                <div class="settings-addr-row">
+                    <span class="settings-label">src</span>
+                    <input type="text" id="backupAddrInput" value="e9e0" placeholder="e9e0">
+                    <span class="addr-tag">backup</span>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-item" id="settingLabels">
+                    <span>🏷️ Labels (adr_of)</span>
+                    <span class="toggle-pill on" id="pillLabels"></span>
+                </div>
+                <div class="settings-item" id="settingKeys">
+                    <span>🔑 Show key names</span>
+                    <span class="toggle-pill on" id="pillKeys"></span>
+                </div>
+                <div class="settings-item" id="settingAddrs">
+                    <span>📍 Show RAM addresses</span>
+                    <span class="toggle-pill on" id="pillAddrs"></span>
+                </div>
+                <div class="settings-item" id="settingAddrNames">
+                    <span>🗂️ Show addr names</span>
+                    <span class="toggle-pill on" id="pillAddrNames"></span>
+                </div>
+            </div>
+        </div>
         <a href="../" style="text-decoration:none;"><button class="home-btn">🏠 Home</button></a>
     </div>
     <div class="input-container">
@@ -576,6 +640,25 @@
         return items;
     }
 
+
+    // Renumber labels in document order (label1 first seen top-to-bottom)
+    function resequenceLabels(items) {
+        let oldToNew = new Map();
+        let counter = 1;
+        for (let it of items) {
+            if (it.type === 'label' && !oldToNew.has(it.label)) {
+                oldToNew.set(it.label, `label${counter++}`);
+            }
+        }
+        for (let it of items) {
+            if (it.type === 'label') it.label = oldToNew.get(it.label) || it.label;
+            if (it.type === 'data' && it.labelRef) {
+                it.labelRef.label = oldToNew.get(it.labelRef.label) || it.labelRef.label;
+            }
+        }
+        return items;
+    }
+
     // Function to add label references to items
     function addLabelReferences(items, startAddrDest, startAddrSrc) {
         let addrToItemIdx = new Map();
@@ -643,14 +726,31 @@
         return items;
     }
 
+    // ========== ADDR NAME MAP ==========
+    const addrNameMap = new Map([
+        [0x83DA, "adrcvtkey"], [0xD000, "reg0"], [0xD009, "reg0.9"],
+        [0xD110, "modifiers"], [0xD111, "mode"], [0xD112, "submode"],
+        [0xD11A, "num_format"], [0xD11B, "num_format_i"], [0xD11D, "angle_unit"],
+        [0xD138, "draw_mode"], [0xD180, "input_range"], [0xD318, "unstable_char"],
+        [0xD31A, "var_m"], [0xD324, "var_ans"], [0xD32E, "var_a"],
+        [0xD338, "var_b"], [0xD342, "var_c"], [0xD34C, "var_d"],
+        [0xD356, "var_e"], [0xD360, "var_f"], [0xD36A, "var_x"],
+        [0xD374, "var_y"], [0xD37E, "var_preans"], [0xD388, "var_z"],
+        [0xD392, "calc_history"], [0xD139, "current_screen_buffer"],
+        [0xDDD4, "screen_buffer"], [0xD137, "font_size"],
+        [0xD113, "cursor_noflash"], [0xDBD0, "magic_string"]
+    ]);
+
     // UI state
     let currentMode = "detail";
     let currentItems = [];
     let currentByteCount = 0;
     let currentStartAddrDest = 0xd730;
     let currentStartAddrSrc = 0xe9e0;
-    let labelMode = true;   // toggle labels
-    let showKeys = false;   // toggle key display
+    let labelMode = true;
+    let showKeys = true;
+    let showAddrs = true;
+    let showAddrNames = true;
 
     const hexInput = document.getElementById('hexInput');
     const outputDiv = document.getElementById('outputList');
@@ -664,8 +764,8 @@
     const backupAddrInput = document.getElementById('backupAddrInput');
     const modeDetail = document.getElementById('modeDetailBtn');
     const modeSimple = document.getElementById('modeSimpleBtn');
-    const toggleLabelsBtn = document.getElementById('toggleLabelsBtn');
-    const showKeysBtn = document.getElementById('showKeysBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsDropdown = document.getElementById('settingsDropdown');
 
     function updateStats(bytes, items) {
         statsSpan.textContent = `byte: ${bytes} | items: ${items.length}`;
@@ -679,6 +779,26 @@
         }, 2000);
     }
 
+    function fmtAddr(n) {
+        return '0x' + n.toString(16).toLowerCase();
+    }
+
+    function getDataDisplay(it) {
+        if (labelMode && it.labelRef) {
+            const ref = it.labelRef;
+            return ref.isSrc ? `adr_of [+4784] ${ref.label}` : `adr_of ${ref.label}`;
+        }
+        let valHex = (it.hexBytes.length === 2)
+            ? `0x${it.value.toString(16).toUpperCase().padStart(4,'0')}`
+            : `0x${it.value.toString(16).toUpperCase().padStart(2,'0')}`;
+        let extra = '';
+        if (showKeys && it.hexBytes.length === 2 && keyMap.has(it.value))
+            extra += ` # [${keyMap.get(it.value)}]`;
+        if (showAddrNames && it.hexBytes.length === 2 && addrNameMap.has(it.value))
+            extra += ` # ${addrNameMap.get(it.value)}`;
+        return valHex + extra;
+    }
+
     function renderDetailedHtml() {
         const container = document.createElement('div');
         for (let idx = 0; idx < currentItems.length; idx++) {
@@ -686,20 +806,24 @@
             if (it.type === 'label') {
                 const lineDiv = document.createElement('div');
                 lineDiv.className = 'gadget-line';
+                lineDiv.style.paddingLeft = '0';
                 const labelSpan = document.createElement('span');
                 labelSpan.className = 'label-name';
                 labelSpan.textContent = `${it.label}:`;
                 lineDiv.appendChild(labelSpan);
-                const locSpan = document.createElement('span');
-                locSpan.className = 'location';
-                locSpan.textContent = `${it.addr.toString(16).toLowerCase().padStart(5, '0')}`;
-                lineDiv.appendChild(locSpan);
+                if (showAddrs) {
+                    const locSpan = document.createElement('span');
+                    locSpan.className = 'location';
+                    locSpan.textContent = fmtAddr(it.addr);
+                    lineDiv.appendChild(locSpan);
+                }
                 container.appendChild(lineDiv);
                 continue;
             }
 
             const lineDiv = document.createElement('div');
             lineDiv.className = 'gadget-line';
+            lineDiv.style.paddingLeft = '16px';
             let hexText = it.hexBytes.map(b => b.toString(16).padStart(2,'0')).join(' ');
             const badge = document.createElement('span');
             badge.className = 'hex-badge';
@@ -726,27 +850,18 @@
                 }
                 lineDiv.appendChild(nameSpan);
             } else if (it.type === 'data') {
-                let display;
-                if (labelMode && it.labelRef) {
-                    const ref = it.labelRef;
-                    display = ref.isSrc ? `adr_of [+4784] ${ref.label}` : `adr_of ${ref.label}`;
-                } else {
-                    let valHex = (it.hexBytes.length === 2) ? `0x${it.value.toString(16).toUpperCase().padStart(4,'0')}` : `0x${it.value.toString(16).toUpperCase().padStart(2,'0')}`;
-                    display = valHex;
-                    if (showKeys && it.hexBytes.length === 2 && keyMap.has(it.value)) {
-                        display += ` # [${keyMap.get(it.value)}]`;
-                    }
-                }
                 const dataSpan = document.createElement('span');
                 dataSpan.className = 'data-name';
-                dataSpan.textContent = `→ ${display}`;
+                dataSpan.textContent = `→ ${getDataDisplay(it)}`;
                 lineDiv.appendChild(dataSpan);
             }
 
-            const locSpan = document.createElement('span');
-            locSpan.className = 'location';
-            locSpan.textContent = `${it.ramAddrDest.toString(16).toLowerCase().padStart(5, '0')} ${it.ramAddrSrc.toString(16).toLowerCase().padStart(5, '0')}`;
-            lineDiv.appendChild(locSpan);
+            if (showAddrs) {
+                const locSpan = document.createElement('span');
+                locSpan.className = 'location';
+                locSpan.textContent = `${fmtAddr(it.ramAddrDest)} ${fmtAddr(it.ramAddrSrc)}`;
+                lineDiv.appendChild(locSpan);
+            }
             container.appendChild(lineDiv);
         }
         outputDiv.innerHTML = '';
@@ -761,18 +876,9 @@
                 continue;
             }
             if (it.type === 'call') {
-                lines.push(it.name || `call ${it.addr.toString(16).toUpperCase().padStart(5,'0')}`);
+                lines.push(' ' + (it.name || `call ${it.addr.toString(16).toUpperCase().padStart(5,'0')}`));
             } else if (it.type === 'data') {
-                if (labelMode && it.labelRef) {
-                    const ref = it.labelRef;
-                    lines.push(ref.isSrc ? `adr_of [+4784] ${ref.label}` : `adr_of ${ref.label}`);
-                } else {
-                    let val = (it.hexBytes.length === 2) ? `0x${it.value.toString(16).toUpperCase().padStart(4,'0')}` : `0x${it.value.toString(16).toUpperCase().padStart(2,'0')}`;
-                    if (showKeys && it.hexBytes.length === 2 && keyMap.has(it.value)) {
-                        val += ` # [${keyMap.get(it.value)}]`;
-                    }
-                    lines.push(val);
-                }
+                lines.push(' ' + getDataDisplay(it));
             }
         }
         return lines.join('\n');
@@ -816,6 +922,7 @@
                 currentByteCount = bytes.length;
                 let items = parseToItems(bytes, startAddrDest, startAddrSrc);
                 items = addLabelReferences(items, startAddrDest, startAddrSrc);
+                items = resequenceLabels(items);
                 currentItems = items;
                 refreshOutput();
                 setStatus("✅ Decompiled successfully");
@@ -869,17 +976,53 @@
     modeDetail.onclick = () => setActiveMode("detail");
     modeSimple.onclick = () => setActiveMode("simple");
 
-    toggleLabelsBtn.onclick = () => {
+    // ── Settings menu ────────────────────────────────────────────────────
+    function setPill(pill, on) {
+        pill.classList.toggle('on', on);
+    }
+    const pillLabels   = document.getElementById('pillLabels');
+    const pillKeys     = document.getElementById('pillKeys');
+    const pillAddrs    = document.getElementById('pillAddrs');
+    const pillAddrNames = document.getElementById('pillAddrNames');
+
+    // init pills
+    setPill(pillLabels, labelMode);
+    setPill(pillKeys, showKeys);
+    setPill(pillAddrs, showAddrs);
+    setPill(pillAddrNames, showAddrNames);
+
+    document.getElementById('settingLabels').onclick = () => {
         labelMode = !labelMode;
+        setPill(pillLabels, labelMode);
         refreshOutput();
-        setStatus(labelMode ? "🏷️ Labels ON" : "🔢 Raw values ON");
+        setStatus(labelMode ? "🏷️ Labels ON" : "🏷️ Labels OFF");
+    };
+    document.getElementById('settingKeys').onclick = () => {
+        showKeys = !showKeys;
+        setPill(pillKeys, showKeys);
+        refreshOutput();
+        setStatus(showKeys ? "🔑 Keys ON" : "🔑 Keys OFF");
+    };
+    document.getElementById('settingAddrs').onclick = () => {
+        showAddrs = !showAddrs;
+        setPill(pillAddrs, showAddrs);
+        refreshOutput();
+        setStatus(showAddrs ? "📍 Addresses ON" : "📍 Addresses OFF");
+    };
+    document.getElementById('settingAddrNames').onclick = () => {
+        showAddrNames = !showAddrNames;
+        setPill(pillAddrNames, showAddrNames);
+        refreshOutput();
+        setStatus(showAddrNames ? "🗂️ Addr names ON" : "🗂️ Addr names OFF");
     };
 
-    showKeysBtn.onclick = () => {
-        showKeys = !showKeys;
-        refreshOutput();
-        setStatus(showKeys ? "🔑 Key display ON" : "🔑 Key display OFF");
+    // Settings dropdown open/close
+    settingsBtn.onclick = (e) => {
+        e.stopPropagation();
+        settingsDropdown.classList.toggle('show');
     };
+    document.addEventListener('click', () => settingsDropdown.classList.remove('show'));
+    settingsDropdown.addEventListener('click', e => e.stopPropagation());
 
     hexInput.value = "";
     currentItems = [];
