@@ -529,7 +529,7 @@ function renderDetailedHtml(items, onToggle) {
         lineDiv.appendChild(badge);
         const arrowSpan = document.createElement("span");
         arrowSpan.className = "arrow";
-        arrowSpan.textContent = "➜";
+        arrowSpan.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
         lineDiv.appendChild(arrowSpan);
         if (it.type === "call") {
             const addrStr = it.addr.toString(16).toUpperCase().padStart(5, "0");
@@ -559,7 +559,7 @@ function renderDetailedHtml(items, onToggle) {
                 lineDiv.appendChild(nameSpan);
             }
             const toggleBtn = document.createElement("button");
-            toggleBtn.textContent = "🔄";
+            toggleBtn.innerHTML = '<i class="fa-solid fa-rotate"></i>';
             toggleBtn.className = "toggle-call-btn";
             toggleBtn.title = "Toggle raw hex";
             toggleBtn.onclick = (e) => {

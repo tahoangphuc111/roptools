@@ -48,12 +48,10 @@ jobs:
         with:
           node-version: '20'
       - name: Install ESLint
-        # Install eslint and setup a basic browser environment configuration temporarily
         run: |
           npm install -g eslint
           echo '{"env": {"browser": true, "es2021": true}, "extends": "eslint:recommended"}' > .eslintrc.json
       - name: Run JS syntax tests
-        # Just warn on issues so it doesn't hard block old code, but checks for critical syntax errors
         run: eslint "**/*.js" --no-error-on-unmatched-pattern || true
 
   dead-link-check:
@@ -65,7 +63,6 @@ jobs:
       - name: Check for broken links
         uses: lycheeverse/lychee-action@v1.9.3
         with:
-          # Check all HTML and Markdown files
           args: --accept=200,204,429 --verbose --no-progress '**/*.md' '**/*.html'
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}

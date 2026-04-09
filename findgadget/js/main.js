@@ -24,7 +24,7 @@ function setAction(text, isError = false) {
     statusAction.style.color = isError ? "#f28b82" : "#8aa0b8";
 }
 function setGadgetCount(count) {
-    statusGadgets.textContent =
+    statusGadgets.innerHTML =
         count !== undefined
             ? `<i class='fa-solid fa-bullseye'></i> ${count} gadget(s) found`
             : "";
@@ -41,9 +41,9 @@ function setDisasState(state, data = {}) {
         const { name, lines, instrs, size } = data;
         disasBadge.innerHTML = `<span class="dot"></span><span><i class='fa-solid fa-check"></i> <strong>${name}</strong></span>`;
         disasStats.innerHTML = `
-                <span class="stat-chip">📄 ${lines.toLocaleString()} lines</span>
-                <span class="stat-chip">⚙️ ${instrs.toLocaleString()} instructions</span>
-                <span class="stat-chip'>💾 ${(size / 1024).toFixed(1)} KB</span>`;
+                <span class="stat-chip"><i class="fa-solid fa-file-lines"></i> ${lines.toLocaleString()} lines</span>
+                <span class="stat-chip"><i class="fa-solid fa-microchip"></i> ${instrs.toLocaleString()} instructions</span>
+                <span class="stat-chip"><i class="fa-solid fa-hard-drive"></i> ${(size / 1024).toFixed(1)} KB</span>`;
     }
 }
 
@@ -208,7 +208,7 @@ function renderGadgets(gadgets, sortBy = currentSort) {
         parts.push(
             `<div class="gadget-block">` +
                 `<div class="gadget-header">` +
-                `<span>📍 ${g.address || "?"} · lines ${g.startLine + 1}–${g.endLine + 1} · len ${g.length}</span>` +
+                `<span><i class="fa-solid fa-location-dot"></i> ${g.address || "?"} · lines ${g.startLine + 1}–${g.endLine + 1} · len ${g.length}</span>` +
                 `<button class="copy-gadget-btn" onclick="copyGadget(this,'${rawText.replace(/\n/g, "\\n").replace(/'/g, "\\x27")}')"><i class='fa-solid fa-clipboard"></i> Copy</button>` +
                 `</div>` +
                 `<div class="gadget-line'>${text}</div>` +
@@ -222,11 +222,11 @@ window.copyGadget = function (btn, text) {
     navigator.clipboard
         .writeText(text.replace(/\\n/g, "\n"))
         .then(() => {
-            btn.textContent = `<i class='fa-solid fa-check'></i> Copied!`;
+            btn.innerHTML = `<i class='fa-solid fa-check'></i> Copied!`;
             setAction(`<i class='fa-solid fa-clipboard'></i> Gadget copied`);
             setTimeout(
                 () =>
-                    (btn.textContent = `<i class='fa-solid fa-clipboard'></i> Copy`),
+                    (btn.innerHTML = `<i class='fa-solid fa-clipboard'></i> Copy`),
                 1500,
             );
         })
