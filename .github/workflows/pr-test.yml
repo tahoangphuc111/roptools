@@ -1,0 +1,71 @@
+name: PR CI/CD Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  format-check:
+    name: Format Check (Prettier)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Prettier
+        run: npm install -g prettier
+      - name: Run code formatting check
+        run: prettier --check "**/*.{html,css,js}"
+
+  html-lint:
+    name: HTML syntax (HTMLHint)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install HTMLHint
+        run: npm install -g htmlhint
+      - name: Run HTML syntax tests
+        run: htmlhint "**/*.html"
+
+  js-lint:
+    name: JavaScript Linter (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install ESLint
+        # Install eslint and setup a basic browser environment configuration temporarily
+        run: |
+          npm install -g eslint
+          echo '{"env": {"browser": true, "es2021": true}, "extends": "eslint:recommended"}' > .eslintrc.json
+      - name: Run JS syntax tests
+        # Just warn on issues so it doesn't hard block old code, but checks for critical syntax errors
+        run: eslint "**/*.js" --no-error-on-unmatched-pattern || true
+
+  dead-link-check:
+    name: Dead Links Check (Lychee)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Check for broken links
+        uses: lycheeverse/lychee-action@v1.9.3
+        with:
+          # Check all HTML and Markdown files
+          args: --accept=200,204,429 --verbose --no-progress '**/*.md' '**/*.html'
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}

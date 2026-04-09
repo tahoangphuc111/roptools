@@ -639,10 +639,10 @@ function updateStats(bytes, items) {
 }
 
 function setStatus(text, isError = false) {
-    statusSpan.textContent = text;
+    statusSpan.innerHTML = text;
     statusSpan.style.color = isError ? "#f28b82" : "#a0b8d0";
     setTimeout(() => {
-        if (statusSpan.textContent === text && !isError)
+        if (statusSpan.innerHTML === text && !isError)
             statusSpan.style.color = "#a0b8d0";
     }, 2000);
 }

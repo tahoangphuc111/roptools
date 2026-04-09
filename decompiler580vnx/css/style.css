@@ -15,9 +15,9 @@ body {
     max-width: 1300px;
     width: 100%;
     background: #11161f;
-    border-radius: 32px;
-    box-shadow: 0 20px 35px rgba(0, 0, 0, 0.6);
-    border: 1px solid #252d3a;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border: 1px solid #1e2530;
     overflow: hidden;
 }
 .header {
